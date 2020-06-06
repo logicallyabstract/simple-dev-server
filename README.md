@@ -6,4 +6,6 @@ This server is meant to be a way to serve typescript source files directly to a 
 
 `npm install --save-dev @logicallyabstract/simple-dev-server`
 
-`npx simple-dev-server --port 3000`
+`npx simple-dev-server --port 3000 --fallback-index /static/index.html`
+
+**Warning** Do not use this to serve a production website. Use this for local development or running tests only.

@@ -1,6 +1,6 @@
 {
   "name": "@logicallyabstract/simple-dev-server",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Run a dev server using koa with TS and node resolve transforms",
   "main": "dist/server.js",
   "bin": {

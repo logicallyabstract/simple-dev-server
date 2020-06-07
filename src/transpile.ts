@@ -1,12 +1,13 @@
 /* eslint-disable no-param-reassign */
 
 import { cjsToEsmTransformerFactory } from '@wessberg/cjs-to-esm-transformer';
-import { relative } from 'path';
+import { dirname, join, relative } from 'path';
 import { sync } from 'resolve';
 import * as ts from 'typescript';
 
-const rewriteNodeResolve = (): // requestPath: string,
-ts.TransformerFactory<ts.SourceFile> => (context) => {
+const rewriteNodeResolve = (
+  requestPath: string,
+): ts.TransformerFactory<ts.SourceFile> => (context) => {
   const visit: ts.Visitor = (node) => {
     node = ts.visitEachChild(node, visit, context);
 
@@ -17,10 +18,12 @@ ts.TransformerFactory<ts.SourceFile> => (context) => {
     ) {
       const target = node.moduleSpecifier.text;
 
-      // const base = dirname(join(process.cwd(), requestPath));
-
       try {
-        const path = sync(target);
+        const path = sync(target, {
+          basedir: target.startsWith('./')
+            ? dirname(join(process.cwd(), `.${requestPath}`))
+            : process.cwd(),
+        });
 
         const newTarget = `/${relative(process.cwd(), path)}`;
 
@@ -53,9 +56,9 @@ ts.TransformerFactory<ts.SourceFile> => (context) => {
   return (node) => ts.visitNode(node, visit);
 };
 
-const rewriteLocalPathExts = (): ts.TransformerFactory<ts.SourceFile> => (
-  context,
-) => {
+const rewriteLocalPathExts = (
+  requestPath: string,
+): ts.TransformerFactory<ts.SourceFile> => (context) => {
   /**
    * Huge props to https://gist.github.com/AviVahl/40e031bd72c7264890f349020d04130a
    *
@@ -72,6 +75,10 @@ const rewriteLocalPathExts = (): ts.TransformerFactory<ts.SourceFile> => (
       const target = node.moduleSpecifier.text;
 
       if (target.endsWith('.js')) {
+        return node;
+      }
+
+      if (requestPath.includes('node_modules')) {
         return node;
       }
 
@@ -103,15 +110,31 @@ const rewriteLocalPathExts = (): ts.TransformerFactory<ts.SourceFile> => (
   return (node) => ts.visitNode(node, visit);
 };
 
-export const transpile = (input: string) => {
+/**
+ * Not sure how to do this in typescript's ast parser, so
+ * use a regex for now.
+ */
+const rewriteDynamicImports = (input: string): string => {
+  const rewrite = input.replace(
+    /await\simport\('\.\/(.*)'\)/gm,
+    (match, offset) => {
+      return match.replace(offset, `${offset}.js`);
+    },
+  );
+
+  return rewrite;
+};
+
+export const transpile = (input: string, path: string) => {
   const beforeTransformers = [
-    rewriteNodeResolve(),
     cjsToEsmTransformerFactory(),
-    rewriteNodeResolve(),
-    rewriteLocalPathExts(),
+    rewriteNodeResolve(path),
+    rewriteLocalPathExts(path),
   ];
 
-  const result = ts.transpileModule(input, {
+  const updatedInput = rewriteDynamicImports(input);
+
+  const result = ts.transpileModule(updatedInput, {
     compilerOptions: {
       module: ts.ModuleKind.ESNext,
       target: ts.ScriptTarget.ES2019,

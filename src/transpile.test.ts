@@ -4,7 +4,7 @@ describe('transpile', () => {
   it('should transform ts to js', () => {
     const m = `
       export const b = 'testing';`;
-    const result = transpile(m);
+    const result = transpile(m, '/');
 
     expect(result).toContain('testing');
   });
@@ -14,7 +14,7 @@ describe('transpile', () => {
       const chunk = require('lodash/chunk');
 
       export const b = chunk(['a', 'b', 'c', 'd'], 2);`;
-    const result = transpile(m);
+    const result = transpile(m, '/');
 
     expect(result).not.toContain('require');
     expect(result).toContain('import');

@@ -35,16 +35,19 @@ describe('koa-transform', () => {
     expect(fakeContext.path).toBe('/index.html');
   });
 
+  /** This is kind of an integration test until I better understand Jest module fakes */
   it('should transpile a TS module not in node_modules', async () => {
     const middleware = tsTransform();
     const nextMock = jest.fn().mockResolvedValue(undefined);
     const isMock = jest.fn().mockReturnValue(true);
     const fakeContext = ({
-      path: '/src/main.js',
+      path: '/fixtures/static/main-es.js',
+      method: 'GET',
       response: {
         is: isMock,
       },
-      body: "import { a } from 'test';\nexport { a };",
+      body:
+        "import { v } from './main-import';\nexport * from './main-import';",
     } as unknown) as Context;
 
     await middleware(fakeContext, nextMock);

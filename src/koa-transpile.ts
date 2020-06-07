@@ -44,7 +44,8 @@ export const tsTransform = (): Middleware => async (ctx, next) => {
 
   if (
     ctx.path.includes('node_modules/chai') ||
-    ctx.path.includes('node_modules/mocha')
+    ctx.path.includes('node_modules/mocha') ||
+    ctx.path.includes('node_modules/sinon')
   ) {
     return;
   }
@@ -64,7 +65,7 @@ export const tsTransform = (): Middleware => async (ctx, next) => {
   }
 
   try {
-    ctx.body = transpile(body);
+    ctx.body = transpile(body, ctx.path);
     ctx.type = 'application/javascript';
     ctx.status = 200;
   } catch (error) {

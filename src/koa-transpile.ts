@@ -42,8 +42,18 @@ export const tsTransform = (): Middleware => async (ctx, next) => {
 
   await next();
 
+  if (
+    ctx.path.includes('node_modules/chai') ||
+    ctx.path.includes('node_modules/mocha')
+  ) {
+    return;
+  }
+
   // setting path to 'ts' results in a guess to a video content type
-  if (!ctx.response.is('video/mp2t')) {
+  if (
+    !ctx.response.is('video/mp2t') &&
+    !ctx.response.is('application/javascript')
+  ) {
     return;
   }
 

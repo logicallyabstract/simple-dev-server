@@ -1,5 +1,4 @@
 import * as Koa from 'koa';
-import { nodeResolve } from 'koa-node-resolve';
 import * as koaStatic from 'koa-static';
 import { historyApi } from './koa-history-fallback';
 import { tsTransform } from './koa-transpile';
@@ -12,7 +11,6 @@ import { tsTransform } from './koa-transpile';
 export const createSimpleDevServerApp = (fallbackIndex?: string) => {
   const app = new Koa();
 
-  app.use(nodeResolve());
   app.use(tsTransform());
 
   if (fallbackIndex) {

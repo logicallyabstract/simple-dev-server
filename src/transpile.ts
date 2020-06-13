@@ -1,7 +1,7 @@
 /* eslint-disable no-param-reassign */
 
 import { cjsToEsmTransformerFactory } from '@wessberg/cjs-to-esm-transformer';
-import { dirname, join, relative } from 'path';
+import { basename, dirname, join, relative } from 'path';
 import { sync } from 'resolve';
 import * as ts from 'typescript';
 
@@ -125,6 +125,18 @@ const rewriteDynamicImports = (input: string): string => {
   return rewrite;
 };
 
+const processEnvRegex = /process\.env\.WC_([A-Z_]+)/g;
+
+const rewriteProcessEnv = (input: string): string => {
+  return input.replace(processEnvRegex, (_match, offset) => {
+    if (process.env[`WC_${offset}`]) {
+      return JSON.stringify(process.env[`WC_${offset}`]);
+    }
+
+    return JSON.stringify(false);
+  });
+};
+
 export const transpile = (input: string, path: string) => {
   const beforeTransformers = [
     cjsToEsmTransformerFactory(),
@@ -132,9 +144,11 @@ export const transpile = (input: string, path: string) => {
     rewriteLocalPathExts(path),
   ];
 
-  const updatedInput = rewriteDynamicImports(input);
+  const transformedDynamicImports = rewriteDynamicImports(input);
+  const transformedProcessEnv = rewriteProcessEnv(transformedDynamicImports);
 
-  const result = ts.transpileModule(updatedInput, {
+  const result = ts.transpileModule(transformedProcessEnv, {
+    fileName: basename(path),
     compilerOptions: {
       module: ts.ModuleKind.ESNext,
       target: ts.ScriptTarget.ES2019,

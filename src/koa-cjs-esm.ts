@@ -1,6 +1,5 @@
 import * as getStream from 'get-stream';
 import { Middleware } from 'koa';
-import { join } from 'path';
 import { Stream } from 'stream';
 import { transpile } from './transpile';
 
@@ -33,46 +32,52 @@ const getBodyAsString = async (
  * Thanks Polymer team and Google
  */
 
-export const tsTransform = (): Middleware => async (ctx, next) => {
-  const pathWithoutSlash = ctx.path.substr(1);
-  const localPath = join(process.cwd(), pathWithoutSlash);
+const matchInRegexArray = (str: string, regexArray: RegExp[]): boolean => {
+  for (let i = 0; i < regexArray.length; i += 1) {
+    if (str.match(regexArray[i])) {
+      return true;
+    }
+  }
 
-  const inModules = localPath.includes('node_modules');
-  ctx.path = inModules ? ctx.path : ctx.path.replace('.js', '.ts');
+  return false;
+};
 
+/**
+ * Transpile a javascript file to rewrite imports, resolve node modules, and convert
+ * cjs to esm.
+ */
+export const koaCjsToEsm = (excludePaths: RegExp[] = []): Middleware => async (
+  ctx,
+  next,
+) => {
+  // wait for koa-static
   await next();
 
-  if (
-    ctx.path.includes('node_modules/chai') ||
-    ctx.path.includes('node_modules/mocha') ||
-    ctx.path.includes('node_modules/sinon')
-  ) {
+  if (!ctx.response.is('application/javascript')) {
     return;
   }
 
-  // setting path to 'ts' results in a guess to a video content type
-  if (
-    !ctx.response.is('video/mp2t') &&
-    !ctx.response.is('application/javascript')
-  ) {
-    return;
-  }
-
-  const body = await getBodyAsString(ctx.body);
-
-  if (!body) {
+  if (matchInRegexArray(ctx.path, excludePaths)) {
     return;
   }
 
   try {
-    ctx.body = transpile(body, ctx.path);
+    const file = await getBodyAsString(ctx.body);
+
+    if (!file) {
+      return;
+    }
+
+    const transpiled = transpile(file, ctx.path);
+
+    ctx.body = transpiled;
     ctx.type = 'application/javascript';
     ctx.status = 200;
   } catch (error) {
     /* eslint-disable-next-line no-console */
-    console.error(error);
-    ctx.type = 'text/plain; charset=utf-8';
-    ctx.body = '';
+    console.error('Error resolving imports for path %s\n\n%s', ctx.path, error);
+    ctx.body = null;
+    ctx.type = 'text/plain';
     ctx.status = 500;
   }
 };

@@ -1,17 +1,22 @@
 import * as Koa from 'koa';
 import * as koaStatic from 'koa-static';
+import { koaCjsToEsm } from './koa-cjs-esm';
 import { historyApi } from './koa-history-fallback';
-import { tsTransform } from './koa-transpile';
+import { koaResolveTypescript } from './koa-resolve-typescript';
 
 /**
  * Serve from process.cwd() (usually project root) in order to access
  * node_modules. Set a fallback index file path that is relative to
- * project root or process.cwd().
+ * project root or process.cwd() including a front '/'.
  */
-export const createSimpleDevServerApp = (fallbackIndex?: string) => {
+export const createSimpleDevServerApp = (
+  excludedPaths: string[] = [],
+  fallbackIndex?: string,
+) => {
   const app = new Koa();
 
-  app.use(tsTransform());
+  app.use(koaResolveTypescript());
+  app.use(koaCjsToEsm(excludedPaths.map((path) => new RegExp(path))));
 
   if (fallbackIndex) {
     app.use(historyApi(fallbackIndex));
@@ -21,3 +26,7 @@ export const createSimpleDevServerApp = (fallbackIndex?: string) => {
 
   return app;
 };
+
+export * from './koa-cjs-esm';
+export * from './koa-history-fallback';
+export * from './koa-resolve-typescript';

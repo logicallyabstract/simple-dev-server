@@ -1,3 +1,10 @@
+/**
+ * Copyright (c) 2020-present, Logically Abstract, LLC. All rights reserved.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 import * as getStream from 'get-stream';
 import { Middleware } from 'koa';
 import { Stream } from 'stream';

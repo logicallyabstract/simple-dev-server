@@ -6,7 +6,9 @@
   "bin": {
     "simple-dev-server": "dist/cli.js"
   },
-  "author": "AJ Klein <aj@logicallyabstract.com>",
+  "author": {
+    "name": "Logically Abstract, LLC"
+  },
   "license": "MIT",
   "scripts": {
     "build": "run-s clean build:ts",

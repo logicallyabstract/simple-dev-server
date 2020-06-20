@@ -15,6 +15,8 @@ import * as ts from 'typescript';
 // fix for missing singleQuote parameter in type definition
 const createLiteral = ts.createLiteral as any;
 
+const relativePathRegex = /^\.\.?\/.+$/;
+
 /**
  * TODO: These two transforms may be able to be combined
  */
@@ -36,7 +38,7 @@ const rewriteNodeResolve = (
 
       try {
         const path = sync(target, {
-          basedir: target.startsWith('./')
+          basedir: relativePathRegex.test(target)
             ? dirname(join(process.cwd(), `.${requestPath}`))
             : process.cwd(),
         });
@@ -81,9 +83,9 @@ const rewriteNodeResolve = (
       node.arguments.length === 1 &&
       ts.isStringLiteral(node.arguments[0])
     ) {
-      const text = node.arguments[0].getText().replace(/'/g, '');
+      const text = node.arguments[0].getText().replace(/['"]/g, '');
 
-      if (!text.startsWith('./')) {
+      if (!relativePathRegex.test(text)) {
         return node;
       }
 

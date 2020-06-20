@@ -12,11 +12,20 @@ import { basename, dirname, join, relative } from 'path';
 import { sync } from 'resolve';
 import * as ts from 'typescript';
 
+// fix for missing singleQuote parameter in type definition
+const createLiteral = ts.createLiteral as any;
+
+/**
+ * TODO: These two transforms may be able to be combined
+ */
+
 const rewriteNodeResolve = (
   requestPath: string,
 ): ts.TransformerFactory<ts.SourceFile> => (context) => {
   const visit: ts.Visitor = (node) => {
     node = ts.visitEachChild(node, visit, context);
+
+    // transform module specifiers
 
     if (
       (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
@@ -40,7 +49,7 @@ const rewriteNodeResolve = (
             node.decorators,
             node.modifiers,
             node.importClause,
-            ts.createLiteral(newTarget),
+            createLiteral(newTarget, true),
           );
         }
 
@@ -49,12 +58,43 @@ const rewriteNodeResolve = (
           node.decorators,
           node.modifiers,
           node.exportClause,
-          ts.createLiteral(newTarget),
+          createLiteral(newTarget, true),
           node.isTypeOnly,
         );
       } catch (error) {
         return node;
       }
+    }
+
+    // transform dynamic imports
+
+    /**
+     * Note:
+     *
+     * This only supports relative dynamic imports right now
+     */
+
+    if (
+      ts.isCallExpression(node) &&
+      node.expression &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      node.arguments.length === 1 &&
+      ts.isStringLiteral(node.arguments[0])
+    ) {
+      const text = node.arguments[0].getText().replace(/'/g, '');
+
+      if (!text.startsWith('./')) {
+        return node;
+      }
+
+      const newTarget = `/${relative(
+        process.cwd(),
+        join(process.cwd(), `.${dirname(requestPath)}`, `${text}.js`),
+      )}`;
+
+      const literal = createLiteral(newTarget, true);
+
+      return ts.updateCall(node, node.expression, undefined, [literal]);
     }
 
     return node;
@@ -80,6 +120,7 @@ const rewriteLocalPathExts = (
       ts.isStringLiteral(node.moduleSpecifier)
     ) {
       const target = node.moduleSpecifier.text;
+      // Try to use ts.resolveModuleName?
 
       if (target.endsWith('.js')) {
         return node;
@@ -97,7 +138,7 @@ const rewriteLocalPathExts = (
           node.decorators,
           node.modifiers,
           node.importClause,
-          ts.createLiteral(newTarget),
+          createLiteral(newTarget, true),
         );
       }
 
@@ -106,7 +147,7 @@ const rewriteLocalPathExts = (
         node.decorators,
         node.modifiers,
         node.exportClause,
-        ts.createLiteral(newTarget),
+        createLiteral(newTarget, true),
         node.isTypeOnly,
       );
     }
@@ -115,21 +156,6 @@ const rewriteLocalPathExts = (
   };
 
   return (node) => ts.visitNode(node, visit);
-};
-
-/**
- * Not sure how to do this in typescript's ast parser, so
- * use a regex for now.
- */
-const rewriteDynamicImports = (input: string): string => {
-  const rewrite = input.replace(
-    /await\simport\('\.\/(.*)'\)/gm,
-    (match, offset) => {
-      return match.replace(offset, `${offset}.js`);
-    },
-  );
-
-  return rewrite;
 };
 
 const processEnvRegex = /process\.env\.WC_([A-Z_]+)/g;
@@ -151,8 +177,7 @@ export const transpile = (input: string, path: string) => {
     rewriteLocalPathExts(path),
   ];
 
-  const transformedDynamicImports = rewriteDynamicImports(input);
-  const transformedProcessEnv = rewriteProcessEnv(transformedDynamicImports);
+  const transformedProcessEnv = rewriteProcessEnv(input);
 
   const result = ts.transpileModule(transformedProcessEnv, {
     fileName: basename(path),

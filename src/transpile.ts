@@ -145,7 +145,7 @@ const rewriteProcessEnv = (input: string): string => {
 };
 
 export const transpile = (input: string, path: string) => {
-  const beforeTransformers = [
+  const afterTransformers = [
     cjsToEsmTransformerFactory(),
     rewriteNodeResolve(path),
     rewriteLocalPathExts(path),
@@ -166,7 +166,7 @@ export const transpile = (input: string, path: string) => {
       experimentalDecorators: true,
     },
     transformers: {
-      before: beforeTransformers,
+      after: afterTransformers,
     },
   });
 

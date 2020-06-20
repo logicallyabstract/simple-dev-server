@@ -17,7 +17,7 @@ describe('transpile', () => {
     const result = transpile(m, '/fixtures/test/check.js');
 
     expect(result).toContain('testing');
-    expect(result).toContain("export * from './test-a.js';");
+    expect(result).toContain("export * from '/fixtures/test/test-a.js';");
   });
 
   it('should transform ts with commonjs to js', () => {
@@ -56,5 +56,13 @@ describe('transpile', () => {
       import('../test-2');`;
     const result = transpile(m, '/fixtures/test/subfolder/check.js');
     expect(result).toContain("'/fixtures/test/test-2.js'");
+  });
+
+  it('should rewrite relative module specifier', () => {
+    const m = `
+      import { a } from './test-a';
+      console.log(a);`;
+    const result = transpile(m, '/fixtures/test/check.js');
+    expect(result).toContain("'/fixtures/test/test-a.js'");
   });
 });

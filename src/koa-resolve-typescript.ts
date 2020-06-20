@@ -52,7 +52,7 @@ export const koaResolveTypescript = (): Middleware => async (ctx, next) => {
 
   try {
     const file = await readFile(tsLocalPath);
-    const transpiled = transpile(file.toString(), tsLocalPath);
+    const transpiled = transpile(file.toString(), pathWithoutSlash);
     ctx.body = transpiled;
     ctx.type = 'application/javascript';
     ctx.status = 200;
@@ -64,7 +64,8 @@ export const koaResolveTypescript = (): Middleware => async (ctx, next) => {
       ctx.path,
       error,
     );
-    ctx.body = null;
+    ctx.type = 'text/plain';
+    ctx.body = '';
     ctx.status = 500;
   }
 };

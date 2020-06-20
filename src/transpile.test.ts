@@ -42,12 +42,19 @@ describe('transpile', () => {
     expect(result).toContain("'/node_modules/unistore/dist/unistore.js'");
   });
 
-  it('should rewrite paths', () => {
+  it('should rewrite relative paths with dyanmic imports', () => {
     const m = `
       import('./test-2');
       await import('./test-a');`;
     const result = transpile(m, '/fixtures/test/check.js');
     expect(result).toContain("'/fixtures/test/test-2.js'");
     expect(result).toContain("'/fixtures/test/test-a.js'");
+  });
+
+  it('should rewrite a relative path that goes up a directory', () => {
+    const m = `
+      import('../test-2');`;
+    const result = transpile(m, '/fixtures/test/subfolder/check.js');
+    expect(result).toContain("'/fixtures/test/test-2.js'");
   });
 });

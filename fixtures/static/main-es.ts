@@ -8,9 +8,13 @@
 /* eslint-disable no-console */
 
 import chunk from 'lodash-es/chunk';
+import unistore, { Action } from 'unistore';
 import { v } from './main-import';
 
 export const chunks = chunk(['a', 'b', 'c', 'd'], 2);
 
 console.log(chunks);
 console.log(v);
+console.log(unistore);
+const a: Action<{}> | undefined = undefined;
+console.log(a);

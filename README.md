@@ -10,4 +10,6 @@ This server is meant to be a way to serve typescript source files directly to a 
 
 Optionally, use one or multiple `-e` flags to specify a regex to not tranform to esm.
 
-**Warning** Do not use this to serve a production website. Use this for local development or running tests only.
+# Warning
+
+**Do not use this to serve a production website. Use this for local development or running tests only.**

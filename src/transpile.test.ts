@@ -26,4 +26,13 @@ describe('transpile', () => {
     expect(result).not.toContain('require');
     expect(result).toContain('import');
   });
+
+  it('should remove type only imports', () => {
+    const m = `
+      import unistore, { Action } from 'unistore';
+      const a: Action<{}> | undefined = undefined;
+      console.log(a);`;
+    const result = transpile(m, '/');
+    expect(result).not.toContain('Action');
+  });
 });

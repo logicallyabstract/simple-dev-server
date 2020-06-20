@@ -177,8 +177,8 @@ describe('koa-transform', () => {
 
     expect(fakeContext.status).toBe(500);
     expect(transpile).toHaveBeenCalledTimes(1);
-    expect(fakeContext.type).toBeUndefined();
-    expect(fakeContext.body).toBeNull();
+    expect(fakeContext.type).toBe('text/plain');
+    expect(fakeContext.body).toBe('');
     expect(consoleErrorMock).toHaveBeenCalledTimes(1);
   });
 });

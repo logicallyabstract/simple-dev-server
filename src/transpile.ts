@@ -17,6 +17,8 @@ const createLiteral = ts.createLiteral as any;
 
 const relativePathRegex = /^\.\.?\/.+$/;
 
+const extensions = ['.ts', '.js'];
+
 /**
  * TODO: These two transforms may be able to be combined
  */
@@ -34,38 +36,49 @@ const rewriteNodeResolve = (
       node.moduleSpecifier &&
       ts.isStringLiteral(node.moduleSpecifier)
     ) {
+      /**
+       * This is the module specifier string
+       * './test' or 'unistore'
+       */
       const target = node.moduleSpecifier.text;
 
-      try {
-        const path = sync(target, {
-          basedir: relativePathRegex.test(target)
-            ? dirname(join(process.cwd(), `.${requestPath}`))
-            : process.cwd(),
-        });
+      /**
+       * requestPath is like src/my-app.js or node_modules/unistore/dist/unistore.js
+       */
+      const dir = dirname(join(process.cwd(), `./${requestPath}`));
+      const baseDir = relativePathRegex.test(target) ? dir : process.cwd();
 
-        const newTarget = `/${relative(process.cwd(), path)}`;
+      const path = sync(target, {
+        basedir: baseDir,
+        extensions,
+      });
 
-        if (ts.isImportDeclaration(node)) {
-          return ts.updateImportDeclaration(
-            node,
-            node.decorators,
-            node.modifiers,
-            node.importClause,
-            createLiteral(newTarget, true),
-          );
-        }
+      /**
+       * If the found file was a TS file, replace the extension with JS
+       */
+      const newTarget = `/${relative(
+        process.cwd(),
+        path.replace('.ts', '.js'),
+      )}`;
 
-        return ts.updateExportDeclaration(
+      if (ts.isImportDeclaration(node)) {
+        return ts.updateImportDeclaration(
           node,
           node.decorators,
           node.modifiers,
-          node.exportClause,
+          node.importClause,
           createLiteral(newTarget, true),
-          node.isTypeOnly,
         );
-      } catch (error) {
-        return node;
       }
+
+      return ts.updateExportDeclaration(
+        node,
+        node.decorators,
+        node.modifiers,
+        node.exportClause,
+        createLiteral(newTarget, true),
+        node.isTypeOnly,
+      );
     }
 
     // transform dynamic imports
@@ -83,16 +96,25 @@ const rewriteNodeResolve = (
       node.arguments.length === 1 &&
       ts.isStringLiteral(node.arguments[0])
     ) {
+      /**
+       * getText() returns './test' with quotes, so strip the quotes in the string
+       */
       const text = node.arguments[0].getText().replace(/['"]/g, '');
 
       if (!relativePathRegex.test(text)) {
         return node;
       }
 
-      const newTarget = `/${relative(
+      /**
+       * requestPath is like src/my-app.js
+       */
+      const joinPath = join(
         process.cwd(),
-        join(process.cwd(), `.${dirname(requestPath)}`, `${text}.js`),
-      )}`;
+        `./${dirname(requestPath)}`,
+        `${text}.js`,
+      );
+
+      const newTarget = `/${relative(process.cwd(), joinPath)}`;
 
       const literal = createLiteral(newTarget, true);
 
